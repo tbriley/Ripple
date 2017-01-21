@@ -9,35 +9,51 @@ using UniRx.Triggers;
 
 public class ForceSystem : SystemBehaviour
 {
-	public GameObject Ground;
-	private Rigidbody Player;
-	public float ExplosionForce = 1f;
-	public float ExplosionRadius = 5f;
+	public float RippleForce = 1f;
+	public float RippleRadius = 5f;
+
+	public float DragForce = 1f;
+	public float DragRadius = 1f;
+
 	IGroup Rigidbodies;
+	IGroup DownTriggers;
+	IGroup DragTriggers;
 
 	public override void Setup ()
 	{
 		base.Setup ();
 
-		Rigidbodies = GroupFactory.Create (new Type[]{ typeof(Rigidbody) });
-	}
+		Rigidbodies = GroupFactory.Create(new Type[] { typeof(Rigidbody) });
+		DownTriggers = GroupFactory.Create (new Type[]{ typeof(ObservablePointerDownTrigger) });
+		DragTriggers = GroupFactory.Create (new Type[]{ typeof(ObservableDragTrigger) });
 
-	void Update()
-	{
-		if (!Input.GetMouseButtonDown (0))
-			return;
-
-		var screenPosition = Input.mousePosition;
-		var ray = Camera.main.ScreenPointToRay (new Vector3(screenPosition.x, screenPosition.y, 0));
-
-		RaycastHit raycastHit;
-		if (Physics.Raycast (ray, out raycastHit))
+		DownTriggers.Entities.ObserveAdd ().Select (x => x.Value).StartWith (DownTriggers.Entities).Subscribe (entity =>
 		{
-			foreach (var entity in Rigidbodies.Entities)
+			var trigger = entity.GetComponent<ObservablePointerDownTrigger>();
+
+			trigger.OnPointerDownAsObservable ().Subscribe (eventData =>
 			{
-				var _rigidbody = entity.GetComponent<Rigidbody> ();
-				_rigidbody.AddExplosionForce(ExplosionForce, raycastHit.point, ExplosionRadius, 0f, ForceMode.Impulse);
-			}
-		}
+				var position = eventData.pointerPressRaycast.worldPosition;
+				foreach (var rbEntity in Rigidbodies.Entities)
+				{
+					var _rigidbody = rbEntity.GetComponent<Rigidbody> ();
+					_rigidbody.AddExplosionForce(RippleForce, position, RippleRadius, 0f, ForceMode.Impulse);
+				}
+			}).AddTo (this.Disposer).AddTo(trigger.gameObject);
+		}).AddTo (this.Disposer);
+
+		DragTriggers.Entities.ObserveAdd ().Select (x => x.Value).StartWith (DragTriggers.Entities).Subscribe (entity =>
+		{
+			var trigger = entity.GetComponent<ObservableDragTrigger>();
+			trigger.OnDragAsObservable ().Subscribe (eventData =>
+			{
+				var position = eventData.pointerCurrentRaycast.worldPosition;
+				foreach (var rbEntity in Rigidbodies.Entities)
+				{
+					var _rigidbody = rbEntity.GetComponent<Rigidbody> ();
+					_rigidbody.AddExplosionForce(DragForce, position, DragRadius, 0f, ForceMode.Impulse);
+				}
+			}).AddTo (this.Disposer).AddTo(trigger.gameObject);
+		}).AddTo (this.Disposer);
 	}
 }
