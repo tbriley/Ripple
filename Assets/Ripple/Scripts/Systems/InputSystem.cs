@@ -6,12 +6,14 @@ using AlphaECS.Unity;
 public class InputSystem : SystemBehaviour
 {
 	public GameObject Ground;
+	private Rigidbody Player;
+	public float ExplosionForce = 1f;
 
 	public override void Setup ()
 	{
 		base.Setup ();
 
-
+		Player = GameObject.Find ("Player").GetComponent<Rigidbody> ();
 	}
 
 	void Update()
@@ -26,8 +28,9 @@ public class InputSystem : SystemBehaviour
 		Debug.DrawRay (ray.origin, ray.direction * 1000f, Color.red);
 		RaycastHit raycastHit;
 
-		if (Physics.Raycast (ray, raycastHit)) {
-
+		if (Physics.Raycast (ray, out raycastHit))
+		{
+			Player.AddExplosionForce (ExplosionForce, raycastHit.point, 5f, 0f, ForceMode.Impulse);
 		}
 	}
 }
