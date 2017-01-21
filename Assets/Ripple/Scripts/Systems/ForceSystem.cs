@@ -38,6 +38,7 @@ public class ForceSystem : SystemBehaviour
 				{
 					var _rigidbody = rbEntity.GetComponent<Rigidbody> ();
 					_rigidbody.AddExplosionForce(RippleForce, position, RippleRadius, 0f, ForceMode.Impulse);
+                    FindObjectOfType<GraphicMeshUpdater>().Impulse(position, -1);
 				}
 			}).AddTo (this.Disposer).AddTo(trigger.gameObject);
 		}).AddTo (this.Disposer);
@@ -52,8 +53,9 @@ public class ForceSystem : SystemBehaviour
 				{
 					var _rigidbody = rbEntity.GetComponent<Rigidbody> ();
 					_rigidbody.AddExplosionForce(DragForce, position, DragRadius, 0f, ForceMode.Impulse);
-				}
-			}).AddTo (this.Disposer).AddTo(trigger.gameObject);
+                    FindObjectOfType<GraphicMeshUpdater>().Impulse(position, -1);
+                }
+            }).AddTo (this.Disposer).AddTo(trigger.gameObject);
 		}).AddTo (this.Disposer);
 	}
 }
