@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -19,6 +20,8 @@ public class Snake : MonoBehaviour
 
     private readonly List<GameObject>  _snake = new List<GameObject>();
 
+    private bool _allowDirectionChange = true;
+
     void Start()
     {
         for (int i = 0; i < 4; i++)
@@ -35,21 +38,62 @@ public class Snake : MonoBehaviour
     void Update()
     {
         if (Time.time > _lastHeadCreation + Speed)
-        {
             MoveSnake(Time.time > _lastIncrementTime + IncrementSizeSpeed);
-            _lastHeadCreation = Time.time;
-        }
+
+        CheckGameover();
 
         UpdateSnakeTailHeights();
+        UpdateInputs();
+    }
 
-        if (Input.GetKeyDown(KeyCode.LeftArrow))
+    void CheckGameover()
+    {
+        var untransformedPosition = _snake.Last().transform.position;
+        var p = untransformedPosition / Water.Unit;
+
+        if (p.x < 0 || p.z < 0 || p.x >= Water.Size || p.z >= Water.Size)
+            GameOver();
+
+        for (int i = 0; i < _snake.Count - 1; i++)
+        {
+            var tr = _snake[i].transform;
+            if (Math.Abs(tr.position.x - untransformedPosition.x) < float.Epsilon &&
+                Math.Abs(tr.position.z - untransformedPosition.z) < float.Epsilon)
+                GameOver();
+        }
+    }
+
+    void GameOver()
+    {
+        Debug.LogError("GAMEOVER");
+        Destroy(this);
+    }
+
+    void UpdateInputs()
+    {
+        if (!_allowDirectionChange)
+            return;
+
+        if (Input.GetKeyDown(KeyCode.LeftArrow) && Direction != Vector3.right)
+        {
             Direction = Vector3.left;
-        if (Input.GetKeyDown(KeyCode.RightArrow))
+            _allowDirectionChange = false;
+        }
+        if (Input.GetKeyDown(KeyCode.RightArrow) && Direction != Vector3.left)
+        {
             Direction = Vector3.right;
-        if (Input.GetKeyDown(KeyCode.UpArrow))
+            _allowDirectionChange = false;
+        }
+        if (Input.GetKeyDown(KeyCode.UpArrow) && Direction != Vector3.back)
+        {
             Direction = Vector3.forward;
-        if (Input.GetKeyDown(KeyCode.DownArrow))
+            _allowDirectionChange = false;
+        }
+        if (Input.GetKeyDown(KeyCode.DownArrow) && Direction != Vector3.forward)
+        {
             Direction = Vector3.back;
+            _allowDirectionChange = false;
+        }
     }
 
     void MoveSnake(bool incrementSize = false)
@@ -69,9 +113,12 @@ public class Snake : MonoBehaviour
             _snake.RemoveAt(0);
         }
         else
-        {
             _lastIncrementTime = Time.time;
-        }
+
+        if (!_allowDirectionChange)
+            _allowDirectionChange = true;
+
+        _lastHeadCreation = Time.time;
     }
 
     void UpdateSnakeTailHeights()
