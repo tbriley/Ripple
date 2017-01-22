@@ -9,6 +9,7 @@ public class UIManager : MonoBehaviour {
 	void Start () {
 		Time.timeScale = 1;
 		pauseObjects = GameObject.FindGameObjectsWithTag("ShowOnPause");
+        Debug.Log(pauseObjects.Length);
 		hidePaused();
 	}
 
