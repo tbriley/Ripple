@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 [RequireComponent(typeof(MeshRenderer))]
 [RequireComponent(typeof(MeshFilter))]
-public class GraphicMeshUpdater : MonoBehaviour
+public class GraphicMeshUpdater : MonoBehaviourSingleton<GraphicMeshUpdater>
 {
     public int          Size = 10;
     public float        Spread = .1f;
@@ -57,6 +57,8 @@ public class GraphicMeshUpdater : MonoBehaviour
 
     void Awake()
     {
+        base.Awake();
+
         _meshFilter = GetComponent<MeshFilter>();
         _lastVertices = _meshFilter.mesh.vertices;
         _velocityMap = new float[Size * Size];
@@ -98,7 +100,14 @@ public class GraphicMeshUpdater : MonoBehaviour
 
     public void Impulse(int x, int y, float verticalVelocity)
     {
+        if (x <= 0 || y <= 0 || x >= Size - 1 || y >= Size - 1) return;
         _lastVertices[y * Size + x] += new Vector3(0, verticalVelocity, 0);
+    }
+
+    public void Flatten(int x, int y, float verticalValue)
+    {
+        if (x <= 0 || y <= 0 || x >= Size - 1 || y >= Size - 1) return;
+        _lastVertices[y * Size + x].y = verticalValue;
     }
 
     void Update()

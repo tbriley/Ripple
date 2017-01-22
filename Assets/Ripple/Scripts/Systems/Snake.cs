@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public class Snake : MonoBehaviour
+public class Snake : MonoBehaviourSingleton<Snake>
 {
-    public GraphicMeshUpdater Water;
     public Vector2 InitPosition = new Vector2(10, 10);
     public float Speed = .5f;
-    public float IncrementSizeSpeed = 3;
 
     public PrimitiveType PrimitiveType = PrimitiveType.Cube;
 
@@ -16,19 +14,20 @@ public class Snake : MonoBehaviour
 
     private Vector3 Direction = Vector3.right;
     private float _lastHeadCreation;
-    private float _lastIncrementTime;
 
     private readonly List<GameObject>  _snake = new List<GameObject>();
 
     private bool _allowDirectionChange = true;
 
+    public bool IncrementSize { get; set; }
+    
     void Start()
     {
         for (int i = 0; i < 4; i++)
         {
             GameObject sphereGo = GameObject.CreatePrimitive(PrimitiveType);
-            sphereGo.transform.position = new Vector3(InitPosition.x + i * Water.Unit, 0, InitPosition.y);
-            sphereGo.transform.localScale = new Vector3(1, 1, 1) * Water.Unit;
+            sphereGo.transform.position = new Vector3(InitPosition.x + i * GraphicMeshUpdater.Instance.Unit, 0, InitPosition.y);
+            sphereGo.transform.localScale = new Vector3(1, 1, 1) * GraphicMeshUpdater.Instance.Unit;
             sphereGo.GetComponent<Renderer>().material.color = Color.red;
             sphereGo.transform.parent = transform;
             _snake.Add(sphereGo);
@@ -38,9 +37,10 @@ public class Snake : MonoBehaviour
     void Update()
     {
         if (Time.time > _lastHeadCreation + Speed)
-            MoveSnake(Time.time > _lastIncrementTime + IncrementSizeSpeed);
+            MoveSnake();
 
         CheckGameover();
+        ItemManager.Instance.CollectItem(_snake.Last().transform.position);
 
         UpdateSnakeTailHeights();
         UpdateInputs();
@@ -49,10 +49,15 @@ public class Snake : MonoBehaviour
     void CheckGameover()
     {
         var untransformedPosition = _snake.Last().transform.position;
-        var p = untransformedPosition / Water.Unit;
+        var p = untransformedPosition / GraphicMeshUpdater.Instance.Unit;
 
-        if (p.x < 0 || p.z < 0 || p.x >= Water.Size || p.z >= Water.Size)
+        if (Mathf.RoundToInt(p.x) < 0 || 
+            Mathf.RoundToInt(p.z) < 0 || 
+            Mathf.RoundToInt(p.x) > GraphicMeshUpdater.Instance.Size || 
+            Mathf.RoundToInt(p.z) > GraphicMeshUpdater.Instance.Size)
+        {
             GameOver();
+        }
 
         for (int i = 0; i < _snake.Count - 1; i++)
         {
@@ -96,24 +101,24 @@ public class Snake : MonoBehaviour
         }
     }
 
-    void MoveSnake(bool incrementSize = false)
+    void MoveSnake()
     {
         var headPosition = _snake.Last().transform.position;
 
         GameObject sphereGo = GameObject.CreatePrimitive(PrimitiveType);
-        sphereGo.transform.position = headPosition + new Vector3(Direction.x * Water.Unit, 0, Direction.z * Water.Unit);
-        sphereGo.transform.localScale = new Vector3(1, 1, 1) * Water.Unit;
+        sphereGo.transform.position = headPosition + new Vector3(Direction.x * GraphicMeshUpdater.Instance.Unit, 0, Direction.z * GraphicMeshUpdater.Instance.Unit);
+        sphereGo.transform.localScale = new Vector3(1, 1, 1) * GraphicMeshUpdater.Instance.Unit;
         sphereGo.GetComponent<Renderer>().material.color = Color.red;
         sphereGo.transform.parent = transform;
         _snake.Add(sphereGo);
 
-        if (!incrementSize)
+        if (!IncrementSize)
         {
             Destroy(_snake.First());
             _snake.RemoveAt(0);
         }
         else
-            _lastIncrementTime = Time.time;
+            IncrementSize = false;
 
         if (!_allowDirectionChange)
             _allowDirectionChange = true;
@@ -125,16 +130,16 @@ public class Snake : MonoBehaviour
     {
         foreach (var sphere in _snake)
         {
-            var p = sphere.transform.position / Water.Unit;
+            var p = sphere.transform.position / GraphicMeshUpdater.Instance.Unit;
 
             var x = Mathf.RoundToInt(p.x);
             var z = Mathf.RoundToInt(p.z);
 
-            p.y = Water.GetHeight(x, z);
+            p.y = GraphicMeshUpdater.Instance.GetHeight(x, z);
 
             sphere.transform.position = new Vector3(sphere.transform.position.x, p.y, sphere.transform.position.z);
-            Water.Impulse(z, x, Impulsion);
+            GraphicMeshUpdater.Instance.Flatten(z, x, Impulsion);
         }
-        Water.UpdateVertexMap();
+        GraphicMeshUpdater.Instance.UpdateVertexMap();
     }
 }
