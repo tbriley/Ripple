@@ -5,19 +5,21 @@ using System.Collections.Generic;
 [RequireComponent(typeof(MeshFilter))]
 public class GraphicMeshUpdater : MonoBehaviour
 {
-    public int Size = 10;
-    public float Spread = .1f;
-    public float Unit = 1;
+    public int          Size = 10;
+    public float        Spread = .1f;
+    public float        Unit = 1;
 
     [Range(0, 0.1f)]
-    public float Damping = 0.04f;
+    public float        Damping = 0.04f;
 
-    public float SpringConstant = .02f;
+    public float        SpringConstant = .02f;
 
-    private float[] _velocityMap;
-    private float[] _accelerationMap;
+    private float[]     _velocityMap;
+    private float[]     _accelerationMap;
+    private float[,]    _deltas;
 
-    private float[,] _deltas;
+    private Vector3[]   _lastVertices;
+    private MeshFilter  _meshFilter;
 
     [ContextMenu("Create mesh")]
     void Create()
@@ -53,14 +55,18 @@ public class GraphicMeshUpdater : MonoBehaviour
         mf.sharedMesh.RecalculateNormals();
     }
 
-    private MeshFilter _meshFilter;
-
-    void Start()
+    void Awake()
     {
         _meshFilter = GetComponent<MeshFilter>();
+        _lastVertices = _meshFilter.mesh.vertices;
         _velocityMap = new float[Size * Size];
         _accelerationMap = new float[Size * Size];
         _deltas = new float[Size * Size, 4];
+    }
+
+    public float GetHeight(int x, int y)
+    {
+        return _lastVertices[y * Size + x].y;
     }
 
     public void Impulse(Vector3 point, float verticalVelocity)
@@ -85,49 +91,49 @@ public class GraphicMeshUpdater : MonoBehaviour
         _meshFilter.mesh.vertices = vertices;
     }
 
-    void Impulse(int x, int y, float verticalVelocity)
+    public void UpdateVertexMap()
     {
-        var vertices = _meshFilter.mesh.vertices;
-        
-        vertices[y * Size + x] += new Vector3(0, verticalVelocity, 0);
-        _meshFilter.mesh.vertices = vertices;
+        _meshFilter.mesh.vertices = _lastVertices;
+    }
 
-        Debug.Log("Impulse");
+    public void Impulse(int x, int y, float verticalVelocity)
+    {
+        _lastVertices[y * Size + x] += new Vector3(0, verticalVelocity, 0);
     }
 
     void Update()
     {
         if (Input.GetKey(KeyCode.Space))
-        {
-            Impulse(new Vector3(0, 0, 0), -1);
-        }
+            Impulse(new Vector3(10, 0, 10), -1);
 
-        var vertices = _meshFilter.mesh.vertices;
+        _lastVertices = _meshFilter.mesh.vertices;
 
         for (int i = 1; i < Size - 1; i++)
         {
             for (int j = 1; j < Size - 1; j++)
             {
-                float force = SpringConstant * vertices[j * Size + i].y + _velocityMap[j * Size + i] * Damping;
-                _accelerationMap[j * Size + i] = -force;
-                var res = _velocityMap[j * Size + i];
-                _velocityMap[j * Size + i] += _accelerationMap[j * Size + i];
+                int idx = j * Size + i;
 
-                vertices[j * Size + i] += Vector3.up * res;
+                float force = SpringConstant * _lastVertices[idx].y + _velocityMap[idx] * Damping;
+                _accelerationMap[idx] = -force;
+                var res = _velocityMap[idx];
+                _velocityMap[idx] += _accelerationMap[idx];
 
-                _deltas[j * Size + i, 0] = Spread * (vertices[j * Size + i].y - vertices[j * Size + i + 1].y);
-                _deltas[j * Size + i, 1] = Spread * (vertices[j * Size + i].y - vertices[(j + 1) * Size + i].y);
-                _deltas[j * Size + i, 2] = Spread * (vertices[j * Size + i].y - vertices[j * Size + i - 1].y);
-                _deltas[j * Size + i, 3] = Spread * (vertices[j * Size + i].y - vertices[(j - 1) * Size + i].y);
+                _lastVertices[idx] += Vector3.up * res;
 
-                _velocityMap[j * Size + i + 1] += _deltas[j * Size + i, 0];
-                _velocityMap[(j + 1) * Size + i] += _deltas[j * Size + i, 1];
-                _velocityMap[j * Size + i - 1] += _deltas[j * Size + i, 2];
-                _velocityMap[(j - 1) * Size + i] += _deltas[j * Size + i, 3];
+                _deltas[idx, 0] = Spread * (_lastVertices[idx].y - _lastVertices[idx + 1].y);
+                _deltas[idx, 1] = Spread * (_lastVertices[idx].y - _lastVertices[(j + 1) * Size + i].y);
+                _deltas[idx, 2] = Spread * (_lastVertices[idx].y - _lastVertices[idx - 1].y);
+                _deltas[idx, 3] = Spread * (_lastVertices[idx].y - _lastVertices[(j - 1) * Size + i].y);
+
+                _velocityMap[idx + 1] += _deltas[idx, 0];
+                _velocityMap[(j + 1) * Size + i] += _deltas[idx, 1];
+                _velocityMap[idx - 1] += _deltas[idx, 2];
+                _velocityMap[(j - 1) * Size + i] += _deltas[idx, 3];
             }
         }
 
-        _meshFilter.mesh.vertices = vertices;
+        _meshFilter.mesh.vertices = _lastVertices;
         _meshFilter.mesh.RecalculateBounds();
         _meshFilter.mesh.RecalculateNormals();
     }
