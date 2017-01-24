@@ -117,33 +117,38 @@ public class GraphicMeshUpdater : MonoBehaviourSingleton<GraphicMeshUpdater>
 
         _lastVertices = _meshFilter.mesh.vertices;
 
-        for (int i = 1; i < Size - 1; i++)
-        {
-            for (int j = 1; j < Size - 1; j++)
-            {
-                int idx = j * Size + i;
-
-                float force = SpringConstant * _lastVertices[idx].y + _velocityMap[idx] * Damping;
-                _accelerationMap[idx] = -force;
-                var res = _velocityMap[idx];
-                _velocityMap[idx] += _accelerationMap[idx];
-
-                _lastVertices[idx] += Vector3.up * res;
-
-                _deltas[idx, 0] = Spread * (_lastVertices[idx].y - _lastVertices[idx + 1].y);
-                _deltas[idx, 1] = Spread * (_lastVertices[idx].y - _lastVertices[(j + 1) * Size + i].y);
-                _deltas[idx, 2] = Spread * (_lastVertices[idx].y - _lastVertices[idx - 1].y);
-                _deltas[idx, 3] = Spread * (_lastVertices[idx].y - _lastVertices[(j - 1) * Size + i].y);
-
-                _velocityMap[idx + 1] += _deltas[idx, 0];
-                _velocityMap[(j + 1) * Size + i] += _deltas[idx, 1];
-                _velocityMap[idx - 1] += _deltas[idx, 2];
-                _velocityMap[(j - 1) * Size + i] += _deltas[idx, 3];
-            }
-        }
+        for (int i = 0; i < Size; i++)
+            for (int j = 0; j < Size; j++)
+                UpdateCell(i, j);
 
         _meshFilter.mesh.vertices = _lastVertices;
         _meshFilter.mesh.RecalculateBounds();
         _meshFilter.mesh.RecalculateNormals();
+    }
+
+    void UpdateCell(int i, int j)
+    {
+        int idx = j * Size + i;
+
+        float force = SpringConstant * _lastVertices[idx].y + _velocityMap[idx] * Damping;
+        _accelerationMap[idx] = -force;
+        var res = _velocityMap[idx];
+        _velocityMap[idx] += _accelerationMap[idx];
+
+        _lastVertices[idx] += Vector3.up * res;
+
+        _deltas[idx, 0] = Spread * (_lastVertices[idx].y - (i == Size - 1 ? 0 : _lastVertices[idx + 1].y));
+        _deltas[idx, 1] = Spread * (_lastVertices[idx].y - (j == Size - 1 ? 0 : _lastVertices[(j + 1) * Size + i].y));
+        _deltas[idx, 2] = Spread * (_lastVertices[idx].y - (i == 0 ? 0 : _lastVertices[idx - 1].y));
+        _deltas[idx, 3] = Spread * (_lastVertices[idx].y - (j == 0 ? 0 : _lastVertices[(j - 1) * Size + i].y));
+
+        if (i != Size -1)
+            _velocityMap[idx + 1] += _deltas[idx, 0];
+        if (j != Size - 1)
+            _velocityMap[(j + 1) * Size + i] += _deltas[idx, 1];
+        if (i > 0)
+            _velocityMap[idx - 1] += _deltas[idx, 2];
+        if (j > 0)
+            _velocityMap[(j - 1) * Size + i] += _deltas[idx, 3];
     }
 }

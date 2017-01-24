@@ -64,13 +64,15 @@ public class ItemManager : MonoBehaviourSingleton<ItemManager>
         _dropped = true;
     }
 
-    public void CollectItem(Vector3 pos)
+    public bool CollectItem(Vector3 pos)
     {
         if (Vector3.Distance(pos, _itemInstance.transform.position) < GraphicMeshUpdater.Instance.Unit)
         {
             Snake.Instance.IncrementSize = true;
             Destroy(_itemInstance);
+            return true;
         }
+        return false;
     }
 
     public void UpdateItemPosition()

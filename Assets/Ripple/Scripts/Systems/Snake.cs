@@ -2,15 +2,21 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Snake : MonoBehaviourSingleton<Snake>
 {
     public Vector2 InitPosition = new Vector2(10, 10);
     public float Speed = .5f;
+    public float Acceleration = 1;
 
     public PrimitiveType PrimitiveType = PrimitiveType.Cube;
 
     public float Impulsion = -.05f;
+    public float ImpulsionOverTime = .01f;
+
+    private int _score = 0;
+    public UnityEngine.UI.Text ScoreText;
 
     private Vector3 Direction = Vector3.right;
     private float _lastHeadCreation;
@@ -36,12 +42,15 @@ public class Snake : MonoBehaviourSingleton<Snake>
 
     void Update()
     {
-        if (Time.time > _lastHeadCreation + Speed)
+        if (Time.time > _lastHeadCreation + Speed - Mathf.Max(0, Time.time * Acceleration))
             MoveSnake();
 
         CheckGameover();
-        ItemManager.Instance.CollectItem(_snake.Last().transform.position);
-
+        if (ItemManager.Instance.CollectItem(_snake.Last().transform.position))
+        {
+            _score++;
+            ScoreText.text = string.Format("SCORE : {0}", _score);
+        }
         UpdateSnakeTailHeights();
         UpdateInputs();
     }
@@ -70,8 +79,10 @@ public class Snake : MonoBehaviourSingleton<Snake>
 
     void GameOver()
     {
+
         Debug.LogError("GAMEOVER");
         Destroy(this);
+        SceneManager.LoadScene(0);
     }
 
     void UpdateInputs()
@@ -138,7 +149,7 @@ public class Snake : MonoBehaviourSingleton<Snake>
             p.y = GraphicMeshUpdater.Instance.GetHeight(x, z);
 
             sphere.transform.position = new Vector3(sphere.transform.position.x, p.y, sphere.transform.position.z);
-            GraphicMeshUpdater.Instance.Flatten(z, x, Impulsion);
+            GraphicMeshUpdater.Instance.Flatten(z, x, Impulsion + (Time.time * ImpulsionOverTime));
         }
         GraphicMeshUpdater.Instance.UpdateVertexMap();
     }
